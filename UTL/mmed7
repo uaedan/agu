@@ -1,0 +1,113 @@
+: -- NADEAU -- 25sp98
+
+### 050921 Modified version of mmed6 where percentiles:
+###   Min, 12.5%, 37.5%, Med, 62.5% 87.5, Max. IOCTile-range
+### where OCTile stands for octile (12.5%) intervals.
+### and given.  This to exclude 12.5% outliers while giving more
+### information on the 'discrimination' information on statistics
+### (e.g., S-P time differences among seismic stations in a network).
+
+### 050813 Modified version of mmed4 for case where only 1 
+### data point exists.  Essentially min. = Q1 = MED = Q3 = max. 
+
+### 000116 Modified to include min, max, 1st 2nd and 3rd quartiles.
+### using the Devore definition p. 166: [100(ii-.5)/n]th sample %tile.
+
+### 99jn19 Modified to include min and max values in output.
+
+### Routine computes the median of a column
+### of numbers given to it.
+
+### int(N/4)
+
+cat $*|\
+sort +0 -1n|\
+gawk '
+BEGIN{
+	i=j=flg=0+0
+	N=N2=OCT1=Q1=OCT3=MED=OCT5=Q3=OCT7=N4=N34=0.0+0.0	## MED is Q2
+     }
+{
+#########################
+### Body of routine below:
+  N++
+  lin[N]=$1
+}
+END{
+  ## MIN MAX
+    MIN = lin[1]+0.0
+    MAX = lin[N]+0.0
+
+    ## Compute MED (Q2 or 2nd quartile)
+    N2=int(N/2.0)+0
+    if(N2-(N/2.0) == 0.0+0.0){ 	# even number of data
+      MED=(lin[N2]+lin[N2+1])/2.0
+    }
+    else {			# odd number of data
+      MED=lin[N2+1]+0.0
+    }
+
+    if(N+0 == 1){ 
+      OCT1=Q1=OCT3=OCT5=Q3=OCT7=MED
+    }else{
+      ## Compute OCT1  (1st octile)
+         ii1 = (N*12.5/100) + 0.5	# 12.5%ile = (sampl #) + (interpolation fraction, intf)
+        smp1 = int(ii1)+0
+       intf1 = ii1 - smp1
+       intv1 = lin[smp1+1] - lin[smp1]
+        OCT1 = lin[smp1] + intf1*(intv1)
+   
+      ## Compute Q1  (1st quartile)
+         ii1 = (N*25/100) + 0.5	# 25th %ile = (sampl #) + (interpolation fraction, intf)
+        smp1 = int(ii1)+0
+       intf1 = ii1 - smp1
+       intv1 = lin[smp1+1] - lin[smp1]
+          Q1 = lin[smp1] + intf1*(intv1)
+   
+      ## Compute OCT3  (3rd octile)
+         ii1 = (N*37.5/100) + 0.5	# 37.5%ile = (sampl #) + (interpolation fraction, intf)
+        smp1 = int(ii1)+0
+       intf1 = ii1 - smp1
+       intv1 = lin[smp1+1] - lin[smp1]
+        OCT3 = lin[smp1] + intf1*(intv1)
+   
+      ## Compute Q2  (2rd quartile)
+         ii2 = (N*50/100) + 0.5	# 50th %ile = (sampl #) + (interpolation fraction, intf)
+        smp2 = int(ii2)+0
+       intf2 = ii2 - smp2
+       intv2 = lin[smp2+1] - lin[smp2]
+          Q2 = lin[smp2] + intf2*(intv2)
+   
+      ## Compute OCT5  (5th octile)
+         ii1 = (N*62.5/100) + 0.5	# 62.5%ile = (sampl #) + (interpolation fraction, intf)
+        smp1 = int(ii1)+0
+       intf1 = ii1 - smp1
+       intv1 = lin[smp1+1] - lin[smp1]
+        OCT5 = lin[smp1] + intf1*(intv1)
+   
+      ## Compute Q3  (3rd quartile)
+         ii3 = (N*75/100) + 0.5	# 75th %ile = (sampl #) + (interpolation fraction, intf)
+        smp3 = int(ii3)+0
+       intf3 = ii3 - smp3
+       intv3 = lin[smp3+1] - lin[smp3]
+          Q3 = lin[smp3] + intf3*(intv3)
+
+      ## Compute OCT7  (7th octile)
+         ii1 = (N*87.5/100) + 0.5	# 87.5%ile = (sampl #) + (interpolation fraction, intf)
+        smp1 = int(ii1)+0
+       intf1 = ii1 - smp1
+       intv1 = lin[smp1+1] - lin[smp1]
+        OCT7 = lin[smp1] + intf1*(intv1)
+    }
+
+
+  ## OUTPUT
+#   printf("N: %" "4d  SUM: %" "8.4f  AV1: %9.5f  AV2: %" "9.5f\n",N,SUM1,AV1,AV2)
+#   printf("N: %" "4d  N2: %" "8.4f  MIN: %" "9.5f  MED: %9.5f  MAX: %" "9.5f\n",
+#           N, N2, MIN, MED, MAX)
+#print "Q2: ",Q2
+#printf("N: %" "4d  MIN: %" "9.5f  Q1: %" "9.5f  MED: %9.5f  Q3: %" "9.5f  MAX: %" "9.5f  IQR: %" "9.5f\n", N,MIN,Q1,MED,Q3,MAX,(Q3-Q1))
+
+ ##   Min, 12.5%, 37.5%, Med, 62.5% 87.5, Max. IOCTile-range
+ printf("N: %" "4d  MIN: %" "9.5f  OCT1: %" "9.5f  OCT3: %" "9.5f  MED: %9.5f  OCT5: %" "9.5f  OCT7: %" "9.5f  MAX: %" "9.5f  IoctR: %" "9.5f\n", N,MIN,OCT1,OCT3,MED,OCT5,OCT7,MAX,(OCT7-OCT1))
+    }'

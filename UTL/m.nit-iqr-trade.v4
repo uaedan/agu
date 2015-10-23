@@ -1,0 +1,141 @@
+:
+## PREAMBLE:
+#     --------------------------
+#     + IQR-Nit TRADE-OFF (aka): Evaluation tests w/ iterations
+#     --------------------------
+#       . Small Nit indicates that the process of finding
+#           a final set of data converged more rapidly.
+#           - This implies:
+#               + a more distinct separation between good data and outliers
+#               + and a more stable/reliable solution.
+#               ==> However, small Nit can also arise in cases where there are
+#                   simply few data.
+#       . Large Nit can indicate that the process of finding
+#           a final set of data was either:
+#            1) Oscillating (Nit == mxNit == 15)
+#            2) Took a long time to converge, indicating:
+#               + a less distinct separation between good data and outliers.
+#               + and a less stable/reliable solution.
+#                ==> However, this can include cases where there is more
+#                 data that had to be sorted through.
+#       . There is also some tradeoff between IQR and Nit.
+#           - For a fixed set of data, increasing Nit tends
+#               reduce the number of stations and decrease the
+#               range of IQR.
+#           - While decreasing the IQR is desirable, decreasing
+#               the number of stations if the removed stations
+#               are contributing reasonably good data.
+#               ==> This is because to few stations increases
+#               the possibility of grid-points outside the true
+#               source region giving viable false source locations.
+## AIM:
+#       = HERE: Is an adaptive (iterative) method that optimizes
+#           the trade-off bewteen Nit and IQR to give more stable and reasonable
+#           estimates of grid-point source locations.
+#           (I.E., IQR-Nit TRADE-OFF SOLUTION )
+#            1. Start with cutNit == 1
+#            2.  Evaluate data
+#            3.  WHILE [ *INSUFFICIENT DATA || *med{IQR} > cutIQR (~2.8(arbitrary tests)) ]
+#                  cutNit = cutNit +1
+#                  Evaluate data
+#                END
+#                * Sufficient data is when 'cutNdat' or more grid points remain 
+#                    after mn,mxIQR, cutNit, and mnNstn filtering
+#                * med{IQR} is the median IQR of the 'cutNit' grid point values
+#            4.  IF [ SUFFICIENT DATA && med{IQR} < cutIQR (~2.8(arbitrary tests)) ]
+#                  Evaluate data
+#                  OUTPUT stable/reasonable estimate of grid-point source location
+#                END
+
+
+## CALL:
+# [ "$utl"/m.nit-iqr-trade $mnIQR $mxIQR $mnNstn \
+#                          $cutIQR $cutNit $cutNdat $cutNdat2 $if
+
+utl="$1"
+mnIQR="$2"
+mxIQR="$3"
+mnNstn="$4"
+cutIQR="$5"
+cutNit="$6"     ## starting Nit to be stepped up if IQR below cutIQR
+cutNdat="$7"
+cutNdat2="$8"
+if="$9"
+
+flg="cont"
+while [ $flg == "cont" ]
+do
+       # Select data
+       gawk 'BEGIN{\
+         mniqr=sprintf("%f","'"$mnIQR"'"+0.);\
+         mxiqr=sprintf("%f","'"$mxIQR"'"+0.);\
+         cutNit=sprintf("%d","'"$cutNit"'"+0);\
+         mnNstn=sprintf("%d","'"$mnNstn"'"+0);\
+       }{\
+         if($21+0 <= cutNit+0){\
+         if(mniqr+0. <= $20+0. && $20+0. <= mxiqr+0.){\
+         if(mnNstn+0 <= $8+0){\
+           print $0;\
+         };\
+         };\
+         };\
+       }' $if > tmpx1.$$
+       
+       # Test for sufficient data
+       # If sufficient, output result
+       Ndat=`wc tmpx1.$$ |gawk '{printf("%d", $1+0 )}'`
+       if [ $Ndat -lt $cutNdat ]
+       then
+         echo $cutNit
+         cutNit=`expr $cutNit + 1`
+         msg="INSUFFICIENT DATA w/i mn,mxIQR bounds, Increasing "cutNit""
+         echo "$msg"
+         # Test for maximum cutNit == 10
+         if [ $cutNit -gt 10 ] 
+         then
+           echo "NO VIABLE SOLUTION by cutNit == 10. EXITING"
+           exit
+         fi
+       else
+         msg="SUFFICIENT DATA"
+         echo "$msg"
+
+         # Test for low enough median iqr
+         medIQR=`sort -k 20,20nr tmpx1.$$ |tail -"$cutNdat" |gawk '{print $20}' |"$utl"/mmed4 |gawk '{print $8}'`
+         flg=`echo $medIQR |gawk '{if($1+0. <= "'"$cutIQR"'"+0.){print "done"}else{print "cont"}}'`
+         if [ $flg == "done" ] 
+         then
+           # prefer more stations, then lower IQR
+### Replace: sort -k 20,20nr tmpx1.$$ | tail -"$cutNdat" ###
+           sort -k 8,8n -k 20,20nr tmpx1.$$ |tail -"$cutNdat" > tmpx2.$$
+           echo "Data Used: Nit sorted"
+           sort -k 21,21n tmpx2.$$
+           echo; echo "Data Used: IQR sorted"
+           sort -k 20,20nr tmpx2.$$ ; echo
+           gawk '{print $20}' tmpx2.$$ |"$utl"/mmed4 |gawk '{print "medIQR: ",$0}'; echo
+           gawk '{print $1}' tmpx2.$$ |"$utl"/mmed4 |gawk '{print "X:      ",$0}'
+           gawk '{print $2}' tmpx2.$$ |"$utl"/mmed4 |gawk '{print "Y:      ",$0}'
+           gawk '{print $3}' tmpx2.$$ |"$utl"/mmed4 |gawk '{print "D:      ",$0}'
+           gawk '{print $6}' tmpx2.$$ |"$utl"/mmed4 |gawk '{print "V:      ",$0}'
+         # Multi-Mode filter ( preferentially keep groups of solutions with lower OTs) 
+           echo; echo "Data Used: Multi-mode sorted"
+           sort -k 14,14n tmpx2.$$ |cat -n; echo
+           echo; echo "Data Used: Multi-mode sorted and trimmed"
+### Replace: sort -k 20,20nr tmpx1.$$ |tail -"$cutNdat" |sort -k 14,14n |tail -"$cutNdat2"
+           sort -k 14,14n tmpx2.$$ |tail -"$cutNdat2" |tee tmpx3.$$; echo 
+           gawk '{print $20}' tmpx3.$$ |"$utl"/mmed4 |gawk '{print "medIQR: ",$0}'; echo
+           gawk '{print $1}'  tmpx3.$$ |"$utl"/mmed4 |gawk '{print "mmX:      ",$0}'
+           gawk '{print $2}'  tmpx3.$$ |"$utl"/mmed4 |gawk '{print "mmY:      ",$0}'
+           gawk '{print $3}'  tmpx3.$$ |"$utl"/mmed4 |gawk '{print "mmD:      ",$0}'
+           gawk '{print $6}'  tmpx3.$$ |"$utl"/mmed4 |gawk '{print "mmV:      ",$0}'
+         else
+           cutNit=`expr $cutNit + 1`
+
+           msg="medIQR == "$medIQR". Exceeds cutIQR. Increasing "cutNit""
+           echo "$msg"
+         fi
+       fi
+done
+/bin/rm tmpx1.$$
+exit
+      

@@ -1,0 +1,110 @@
+:
+
+## NADEAU -- 150611
+## AIM:
+## Give ot and outlier bound estimates from station arrival times,
+##   inferred location (given, e.g. from GRIDsearch) and assumed constant Velocity.
+##  = Arrival time at station (at_si) equals travel time (tt) + origin time (ot)
+##    . at_si == tt_si + ot  
+##    . at_si == delX/vel + ot
+##    . at_si == (Xi-Xo)/vel
+##    . ot == at_si - (Xi-Xo)/vel, where
+##       Xo is (cLT,ClN,25km) and vel is some reasonable half-space velocity
+##  = Idea is: 
+##  = The inferred location (and outlw and outhg) will be used later
+##      to identify outliers based on the fourth spread (box-plot) method
+##      of my Devore  stats book.
+##
+##  For example execution and inputs See: /data/hrsn1/hfn6/nadeau/PACKAGES/PSERM/RM.stp1.v2.proc
+##
+
+
+of1="$1"
+oX="$2" 
+oY="$3" 
+oD="$4" 
+MOD_VEL="$5" 
+vlpSPS="$6" 
+mnXC="$7"
+    gawk 'BEGIN{\
+      ox=sprintf("%f","'"$oX"'"+0.);\
+      oy=sprintf("%f","'"$oY"'"+0.);\
+      od=sprintf("%f","'"$oD"'"+0.);\
+      mvel=sprintf("%f","'"$MOD_VEL"'"+0.);\
+      vsps=sprintf("%f","'"$vlpSPS"'"+0.);\
+      mnxc=sprintf("%f","'"$mnXC"'"+0.);\
+      printf("00A oTsec oTsmp stn.nt     Xlcl      Ylcl     Dlcl   stn.nt      ");\
+      printf(" lat.      lon.   depth(km)   XC     LAG NVTdur(min)\n");\
+    }{\
+      if($0 !~ /00A/){\
+        xc=sprintf("%f",$8+0. );\
+        if(xc+0. >= mnxc+0.){\
+          sx=sprintf("%f",$1+0.);\
+          sy=sprintf("%f",$2+0.);\
+          sd=sprintf("%f",$3+0.);\
+          s_dst=sprintf("%f",sqrt( ((sx-ox)^2) + ((sy-oy)^2) + ((sd-od)^2) ) );\
+          sAT=sprintf("%f",($9+0.)/vsps );\
+          sTT=sprintf("%f", s_dst/mvel+0. );\
+          oT=sprintf("%f", sAT-sTT+0. );\
+          oTsmp=sprintf("%d", int( (sAT-sTT)*vsps+0.5 ) );\
+      ## PIPE TO SORT and stderr ##
+          printf("%f %" "4d %-7s %s\n",oT,oTsmp,$4,$0 ) |"sort -k 1,1n 1>&2"
+
+          printf("%f %" "4d %-7s %s\n",oT,oTsmp,$4,$0 );\
+        }\
+      }\
+    }' $of1 |egrep -v '00A ' |sort -k 1,1n |\
+    gawk 'BEGIN{\
+      ox=sprintf("%f","'"$oX"'"+0.);\
+      oy=sprintf("%f","'"$oY"'"+0.);\
+      od=sprintf("%f","'"$oD"'"+0.);\
+      mvel=sprintf("%f","'"$MOD_VEL"'"+0.);\
+      i=j=flg=0+0
+      MED=N=N2=Q1=Q3=N4=N34=0.0+0.0   ## MED is Q2
+    }{\
+      #########################
+      ### Body of routine below:
+      N++;\
+      lin[N]=$1;\
+    }END{\
+      ## MIN MAX
+        MIN = lin[1]+0.0
+        MAX = lin[N]+0.0
+      ## Compute MED (Q2 or 2nd quartile)
+        N2=int(N/2.0)+0
+        if(N2-(N/2.0) == 0.0+0.0){  # even number of data
+          MED=(lin[N2]+lin[N2+1])/2.0
+        }
+        else {          # odd number of data
+          MED=lin[N2+1]+0.0
+        }
+       ## Compute Q1  (1st quartile)
+          ii1 = (N*25/100) + 0.5    # 25th %ile = (sampl #) + (interpolation fraction, intf)
+         smp1 = int(ii1)+0
+        intf1 = ii1 - smp1
+        intv1 = lin[smp1+1] - lin[smp1]
+           Q1 = lin[smp1] + intf1*(intv1)
+       ## Compute Q2  (2rd quartile)
+          ii2 = (N*50/100) + 0.5    # 50th %ile = (sampl #) + (interpolation fraction, intf)
+         smp2 = int(ii2)+0
+        intf2 = ii2 - smp2
+        intv2 = lin[smp2+1] - lin[smp2]
+           Q2 = lin[smp2] + intf2*(intv2)
+       ## Compute Q3  (3rd quartile)
+          ii3 = (N*75/100) + 0.5    # 75th %ile = (sampl #) + (interpolation fraction, intf)
+         smp3 = int(ii3)+0
+        intf3 = ii3 - smp3
+        intv3 = lin[smp3+1] - lin[smp3]
+           Q3 = lin[smp3] + intf3*(intv3)
+      ## OUTPUT
+     IQR=sprintf("%" "9.5f",(Q3-Q1) );
+     outlw=sprintf("%f",Q1-(1.5*IQR)+0. );
+     outhg=sprintf("%f",Q3+(1.5*IQR)+0. );
+     printf("%.1f %.1f %.1f %s %s %s ",ox,oy,od,outlw,outhg,"'"$MOD_VEL"'" );\
+     printf("N: %" "4d  MIN: %" "9.5f  Q1: %" "9.5f  MED: %9.5f  ",N,MIN,Q1,MED );\
+     printf("Q3: %" "9.5f  MAX: %" "9.5f  IQR: %" "9.5f\n",Q3,MAX,IQR );\
+    }'
+exit
+
+
+

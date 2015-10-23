@@ -1,0 +1,139 @@
+: -- NADEAU -- 000610
+### Template for GMT psxyz and/or psxy plots
+
+####################
+###  INVOCATION  ###
+####################
+# [ mGplt.tser.decm  CMSB.BK.Bf1..D.2004.338.230000.ms_decm10.rms.ascii
+
+### INPUT FORMAT (file la):
+#    X         Y        Z      Mp      EID
+#  0.2882   -2.6211  -3.4410  0.17 87010511500
+# -1.9463    5.5684 -11.6450  0.43 87010609000
+# -3.1770    5.9068 -12.0820  0.00 87010609600
+
+
+#######################
+###  PRELIMINARIES  ###
+#######################
+# rm -f ...
+#TITL=`echo "$1" |gawk '{split($0,a,"."); print a[1]"."a[2]"."a[3]}'`
+TITL="$1"
+echo "TITL: $TITL"
+
+pLEN="$2"
+
+#######################
+###   DEFINITIONS   ###
+#######################
+   X="2.0"       	# Plot origin shift (from 0) X. 
+   Y="2.5"         	# Plot origin shift (from 0) Y. 
+# JX="7.0/1.0"		# Plot size in inches.
+  JX="4.0/1.0"		# Plot size in inches.
+#  R="0/24/-50/50500"    # Region of data.
+#  R="0/24/0.0/10.0"    # Region of data.
+#  R="0/17/0.5/2.1"    # Region of data.
+   R="0/"$pLEN"/0.0/1.5"    # Region of data.
+#  B="a2f1:HOD(UTC):/a1000f500:REL-AMP::."$TITL":nsewSW"  # Boundry annottations.
+   B="a4f1:Minutes:/a1.f0.500:Normalized Amplitude::."Percentile_Stack":nsewSW"  # Boundry annottations.
+ Ba0="a0/a0"		# No Boundry annottation (frames plot).
+   S="c"		# Symbol type and size info in third column.
+  Ss="c.2"		# Symbol type with specified sizes.
+   C="l.cpt"		# Color file for options like -C
+Ggry="100"		# Symbol color fill, grey.
+Gclr="150/125/0"		# Symbol color fill, (e.g. Gold).
+  
+#######################
+### REFORMAT INPUT  ###
+#######################
+#cat "$1" |awk '{print $2,$3,$4}' > l.refrmt.$$
+ ## Convert samples to hours
+ ## 20 sps decimated by 10 == 2 sps --> 7200 smps/hour
+ ## 20 sps decimated by 10 == 2 sps -->  600 smps/min.
+#gawk '{i++; printf ("%f %s\n",(i/7200),$1)}' "$1" > l.refrmt.$$
+ gawk '{i++; printf ("%f %s\n",(i/600),$1)}' "$1" > l.refrmt.$$
+head -30 l.refrmt.$$
+
+#######################
+### MODIFY DEFAULTS ###
+#######################
+# To see current gmtdefaults type in: [ gmtdefaults -L
+ gmtset LABEL_FONT_SIZE 14 ANOT_FONT_SIZE 12 HEADER_FONT_SIZE 18
+ gmtset MEASURE_UNIT  inch
+ 
+######################
+### COLOR CPT file ###
+######################
+#echo "B 270 1 1.00" >l.cpt     ## Between blue and Magenta (Purple)
+#echo "F 330 1 1.00" >>l.cpt    ## Between Red and Magenta
+#echo "N 0 1.0 0.0" >>l.cpt     ## Black
+####
+#mGcpt.lin >>l.cpt
+#mG.cpt.ss.pwr >>l.cpt      
+
+###########################
+####     PLOT DATA      ###
+###########################
+# psxy  l.refrmt.$$ -JX"$JX" -R"$R" -B"$B" -Sc -G150 \
+  psxy  l.refrmt.$$ -JX"$JX" -R"$R" -B"$B"           \
+ 	-X"$X" -Y"$Y" > myp."$TITL"
+
+###########################
+#### ADD OTHER SYMBOLS  ###
+###########################
+# ## M6 Event Hypocenter -- solid square
+#egrep '66180000000' l.4M4pls.n.M6 | gawk '{print $3, ($4)}' |\
+#psxy -R-12/10/0/12 -B"$Ba0" -JX5.5/-3.00 -Ss0.2 -G150/125/0 -W20/150/125/000 \
+#	-X0 -Y0 -O -K >>myp."$i"
+
+######################
+#### ADD Ellipses etc.: 4M4+ events and AS
+######################
+### Format of l.4M4pls.n.M6:
+##99999999999   X       Y     D    M  theta a[in] b[in]  CX    CY    CD   clr
+##92294052807 -2.080 -3.279 8.662 4.30 166.0 0.733 0.358  0.0  -2.0   8.75 Green
+##93094052124 -1.847 -1.059 5.914 4.20 172.0 1.465 0.375  0.0   0.1   6.0  Purple
+##93318122534 -2.918 0.138 10.284 4.60 043.5 1.840 1.250  0.0   2.5   9.5  Blue
+##94354102746 -2.002 -4.806 7.039 4.70 081.5 1.053 1.225  0.0  -4.1   5.75 Red
+##66180000000  0.0    0.0   9.0   6.0
+#  ## Ellipses
+#egrep '92294052807|93094052124|93318122534|94354102746' l.4M4pls.n.M6|\
+#gawk '{print $10, $11, $6, ($7/2.0), ($8/2.0)}' |\
+#psxy -R-12/10/0/12 -Ba0/a0 -JX5.5/-3.00 -Se1 -W50/255/255/255 -X0 -Y0 -O -K >>myp."$i"
+
+###########################
+#### ADD TEXT STRINGS
+###########################
+### Now Event Hypocenters as letters A, B, C, ...  or MM/YY ...
+## A
+#egrep '92294052807' l.4M4pls.n.M6 | gawk '{printf("%f %f 15 0 1 MC 10/92",$3,$4)}' |\
+#pstext -R-12/10/0/12 -Ba0/a0 -JX5.5/-3.00 -G255/255/255 -X0 -Y0 -O -K >>myp."$i"
+##psxy -R-12/10/0/12 -Ba0/a0 -JX5.5/-3.00 -Sl0.2/10/92 -W10/255/255/255 -X0 -Y0 -O -K >>myp."$i"
+##psxy -R-12/10/0/12 -Ba0/a0 -JX5.5/-3.00 -Sl0.2/A -W10/150/125/000 -X0 -Y0 -O -K >>myp."$i"
+## B
+#egrep '93094052124' l.4M4pls.n.M6 | gawk '{printf("%f %f 15 0 1 MC 4/93",$3,$4)}' |\
+#pstext -R-12/10/0/12 -Ba0/a0 -JX5.5/-3.00 -G0/0/0 -X0 -Y0 -O -K >>myp."$i"
+##psxy -R-12/10/0/12 -Ba0/a0 -JX5.5/-3.00 -Sl0.2/4/93 -W10/0/0/0 -X0 -Y0 -O -K >>myp."$i"
+##psxy -R-12/10/0/12 -Ba0/a0 -JX5.5/-3.00 -Sl0.2/B -W25/150/125/000 -X0 -Y0 -O -K >>myp."$i"
+## C
+#egrep '93318122534' l.4M4pls.n.M6 | gawk '{printf("%f %f 15 0 1 MC 11/93",$3,$4)}' |\
+#pstext -R-12/10/0/12 -Ba0/a0 -JX5.5/-3.00 -G0/0/0 -X0 -Y0 -O -K >>myp."$i"
+##psxy -R-12/10/0/12 -Ba0/a0 -JX5.5/-3.00 -Sl0.2/11/93 -W10/0/0/0 -X0 -Y0 -O -K >>myp."$i"
+##psxy -R-12/10/0/12 -Ba0/a0 -JX5.5/-3.00 -Sl0.2/C -W25/150/125/000 -X0 -Y0 -O -K >>myp."$i"
+## D
+#egrep '94354102746' l.4M4pls.n.M6 | gawk '{printf("%f %f 15 0 1 MC 12/94",$3,$4)}' |\
+#pstext -R-12/10/0/12 -Ba0/a0 -JX5.5/-3.00 -G255/255/255 -X0 -Y0 -O -K >>myp."$i"
+##psxy -R-12/10/0/12 -Ba0/a0 -JX5.5/-3.00 -Sl0.2/12/94 -W10/255/255/255 -X0 -Y0 -O -K >>myp."$i"
+##psxy -R-12/10/0/12 -Ba0/a0 -JX5.5/-3.00 -Sl0.2/D -W25/150/125/000 -X0 -Y0 -O -K >>myp."$i"
+
+#################
+###  WRAP UP  ###
+#################
+ rm l.refrmt.$$
+#mv myp."$TITL" myp
+#gv myp
+ egrep -v 'setpagedevice' myp."$TITL" > myp
+/bin/rm myp."$TITL"
+ mv myp myp2
+#gv myp2
+

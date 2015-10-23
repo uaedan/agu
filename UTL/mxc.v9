@@ -1,0 +1,148 @@
+: 040402 -- NADEAU
+### For 2 time series (ts), routine to compute rho as a function of lag-time
+### for subwindows of ts2 relative to ts1
+### 040616: Modified for determine shape coherence among stations of initial
+###         triggers.
+### 040618: Modified to give xc for  3 start time
+###         triggers and FAST MEAN for ts2.
+
+# 041231
+### There is a bug in mxc.v7 when lag steps are != 1, 
+### This is a fix for that.
+
+# 150330
+### Modified to:
+###   . Read in swlen in command line
+###   . Read in stp in command line
+
+
+# [ mxc.v9 ts1 ts2 strt swlen stp mnlag mxlag
+#EG (SEE: /data/hrsn1/hfn6/aurelie/TRMR_MONIT/RM.proc )
+#  [ cd /data/hrsn1/hfn6/aurelie/TRMR_MONIT/POST-M6.050114/2015/047
+#    set utl = /data/hrsn1/hfn6/aurelie/TRMR_MONIT/UTL
+#    set ts1 = look.out_BP.Bf123_PB.BfZ12_BK.BfZNE_0.33
+#    set ts2 = look.out_BP.Bf123_PB.BfZ12_BK.BfZNE_0.33
+#    set ts2 = SMNB.BP.Bf1.40.D.2015.046.230000.ms_decm10.rms.ascii
+#    set strt = 1
+#    set swlen = 1000
+#    set swlen = `wc $ts1 |gawk '{print $1}'`
+#    set stp = 1
+#    set stp = 2
+#    set mnlag = -10
+#    set mxlag = 10 
+#    $utl/mxc.v9 $ts1 $ts2 $strt $swlen $stp $mnlag $mxlag
+#    ]]] 
+
+#FN1pfx=`echo "$1" |gawk '{m=split($0,aa,".");print aa[1]"."aa[2]"."aa[3]}'`
+FN1pfx=`echo "$1"`
+#FN2pfx=`echo "$2" |gawk '{m=split($0,aa,".");print aa[1]"."aa[2]"."aa[3]}'`
+FN2pfx=`echo "$2"`
+
+paste $1 $2|\
+gawk '
+BEGIN{
+ 	i=0+0
+ 	strt[1]=sprintf("%d","'"$3"'"+0. ); # In samples
+ 	swlen=sprintf("%d","'"$4"'"+0. );   # In samples
+ 	stp=sprintf("%d","'"$5"'"+0. );     # In samples
+ 	mnlag=sprintf("%d","'"$6"'"+0. );   # In samples
+ 	mxlag=sprintf("%d","'"$7"'"+0. );   # In samples
+     }
+{
+# Read ts into arrays
+i++
+ts1[i]=$1+0.
+ts2[i]=$2+0.
+}
+END{
+#print STDERR "strt[1],swlen,stp,mnlag,mxlag:"
+#print STDERR strt[1],swlen,stp,mnlag,mxlag
+   for(k=1+0;k<=1+0;k++){
+      ## Standardize ts1
+         # Mean ts1
+       swAV1=0
+       for(j=strt[k]+0;j<=strt[k]+swlen-1;j++){
+         swAV1=swAV1+ts1[j] 
+       }
+       swAV1=sprintf("%lf",swAV1/swlen )
+         # Standard deviation ts1
+       VAR1=sdev1=0+0
+       for(j=strt[k]+0;j<=strt[k]+swlen-1;j++){
+         VAR1=VAR1+((ts1[j]-swAV1)^2) 
+       }
+#print STDERR "HHH",k, strt[k]
+       VAR1=VAR1/swlen
+       sdev1=sqrt(VAR1)
+       if(sdev1 == 0.+0.){sdev1=1.0+0.}
+       rr=0+0
+#print "sdev1: ", sdev1 > "/dev/tty"
+       for(j=strt[k]+0;j<=strt[k]+swlen-1;j++){
+         rr++ 
+         subts1[rr]=(ts1[j]-swAV1)/sdev1 
+       }
+  
+       ## Standardize ts2 and compute RHO
+     flg=0+0
+#    for(lag=0;lag<=500;lag=lag+5){
+#    for(lag=-50;lag<=50;lag=lag+1){
+     for(lag=mnlag+0;lag<=mxlag+0;lag=lag+stp+0){
+#print STDERR "stp: ",stp
+#print STDERR "lag: ",lag
+#print STDERR "mxlag: ",mxlag
+       ## Standardize ts2
+
+         # FAST Mean ts2 
+       if(flg+0 == 0+0){
+         swAV2=SUM=0+0
+         for(j=strt[k]+lag+0;j<=strt[k]+swlen-1+lag;j++){
+           SUM=SUM+ts2[j]
+         }
+         swAV2=SUM/swlen
+         flg=0+1
+       }
+       else{
+         for(m=stp+0;m>=1+0;m--){
+	   isub=strt[k]+lag-m
+	   iadd=strt[k]+swlen-1+lag-(m+1)
+           SUM=SUM-ts2[isub]+ts2[iadd]
+           swAV2=SUM/swlen
+#print STDERR "m isub iadd",m, isub,iadd
+	 }
+#print STDERR "HHHH"
+       }
+
+
+#           # Mean ts2
+#         swAV2=0
+#         for(j=strt[k];j<=strt[k]+swlen-1;j++){
+#           swAV2=swAV2+ts2[j+lag]
+#         }
+#         swAV2=swAV2/swlen
+
+
+
+         # Standard deviation ts2
+       VAR2=sdev2=0+0
+       for(j=strt[k]+0;j<=strt[k]+swlen-1;j++){
+         VAR2=VAR2+((ts2[j+lag]-swAV2)^2)
+       }
+       VAR2=VAR2/swlen
+       sdev2=sqrt(VAR2)
+         # Adjustment if sdev = zero
+       if(sdev2+0 == 0+0){sdev2=1+0}
+         # Standardize
+       rr=RHO=0+0
+#print STDERR "XXX1",sdev2
+       for(j=strt[k]+0;j<=strt[k]+swlen-1;j++){
+         rr++ 
+         subts2[rr]=(ts2[j+lag]-swAV2)/sdev2 
+         RHO=RHO+subts1[rr]*subts2[rr]/swlen 
+       #print rr, lag, subts1[rr], subts2[rr], subts1[rr]*subts2[rr]
+       }
+#      if(RHO+0 >= 0.85){
+         printf("%s %d %d %f\n","'"$FN1pfx $FN2pfx"'", strt[k], lag, RHO)
+#        printf("%s %d %d %f %s\n","'"$FN1pfx $FN2pfx"'", strt[k], lag, RHO, swlen)
+#      }
+     }
+    } 
+    }'

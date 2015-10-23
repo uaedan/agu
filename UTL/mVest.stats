@@ -1,0 +1,111 @@
+:
+
+## NADEAU -- 150622
+## AIM:
+##  = Modified/Simplified version of 'mGRIDsearch.v3' for specific task.
+##  = Idea is: 
+##    + Arrival time at station (at_si) equals travel time (tt) + origin time (ot)
+##    . at_si == tt_si + ot  
+##    . at_si == delX/vel + ot
+##    . at_si == (Xi-Xo)/vel
+##    . ot == at_si - (Xi-Xo)/vel, where
+##       Xo is (cLT,ClN,25km) and vel is some reasonable half-space velocity
+##  = For a given grid point (source location),
+##      I will use output from this routine to help identify outliers based on the 
+##      fourth spread (box-plot) method of my Devore  stats book.
+##  = For example execution and inputs See: /data/hrsn1/hfn6/nadeau/PACKAGES/PSERM/RM.stp1.v2.proc
+##
+
+## 150629: Try at estimateing V for a grid-point (gp)
+
+## READ COMMAND LINE ARGUMENTS
+of3="$1"
+oX="$2" 
+oY="$3" 
+oD="$4" 
+vlpSPS="$5" 
+Vflg="$6"
+mnSEP="$7"
+
+#echo $of3 $oX $oY $oD $vlpSPS $Vflg
+
+## Compute d(s), d(at) for station pairs
+## grid-point and station location.
+    gawk 'BEGIN{\
+      ox=sprintf("%f","'"$oX"'"+0.);\
+      oy=sprintf("%f","'"$oY"'"+0.);\
+      od=sprintf("%f","'"$oD"'"+0.);\
+      vsps=sprintf("%f","'"$vlpSPS"'"+0.);\
+      vflg=sprintf("%s","'"$Vflg"'" );\
+      mnsep=sprintf("%f","'"$mnSEP"'"+0.);\
+      i=j=k=0+0;\
+#     printf("00A oTsec oTsmp stn.nt     Xlcl      Ylcl     Dlcl   stn.nt      ");\
+#     printf(" lat.      lon.   depth(km)   XC     LAG NVTdur(min)\n");\
+    }{\
+      if($0 !~ /00A/){\
+        i=i+1;\
+        stn=sprintf("%s",$4);\
+        sx=sprintf("%f",$1+0.);\
+        sy=sprintf("%f",$2+0.);\
+        sd=sprintf("%f",$3+0.);\
+        s_dst=sprintf("%f",sqrt( ((sx-ox)^2) + ((sy-oy)^2) + ((sd-od)^2) ) );\
+        sAT=sprintf("%f",($9+0.)/vsps );\
+        istn[i]=sprintf("%f %f %s",s_dst,sAT,$0 );\
+#print   istn[i];\
+#       sTT=sprintf("%f", s_dst/mvel+0. );\
+#       oT=sprintf("%f", sAT-sTT+0. );\
+#       oTsmp=sprintf("%d", int( (sAT-sTT)*vsps+0.5 ) );\
+#       if(mnot+0. <= oT+0. && oT+0. <= mxot+0.){\
+#         printf("%f %" "4d %-7s %s\n",oT,oTsmp,stn,$0 );\
+#         # If verbose flag ON print to STDERR
+#         if(vflg == "ON"){\
+#           printf("%f %" "4d %-7s %s\n",oT,oTsmp,stn,$0 ) | "sort -k 1,1n |cat -n > /dev/tty";\
+#         }\
+#       }\
+      }\
+    }END{\
+      for(j=(1+0);j<=(i-1);j=(j+1)){\
+        split(istn[j],a);\
+        stna=a[6];\
+        for(k=(j+1);k<=(i+0);k=(k+1)){\
+#print  istn[j];\
+#print  istn[k];\
+#print  ds,dt;\
+          split(istn[k],b);\
+          stnb=b[6];\
+          ds=sprintf("%f",(a[1]-b[1])+0. );\
+          dt=sprintf("%f",(a[2]-b[2])+0. );\
+          if(dt+0.==0.+0.){\
+            vest=sprintf("%f",999.999999+0. );\
+          }else{\
+            vest=sprintf("%f",ds/dt+0. );\
+          }\
+          ## TRIED
+#         if(vest+0. >= 0.+0. && vest+0. < 999.999999+0. ){\
+#         if(vest+0. >= 2.+0. && vest+0. < 4.0+0. ){\
+#         if(vest+0. >= 2.6444+0. && vest+0. < 5.0316+0. ){\
+#         if(vest+0. >= 2.5000+0. && vest+0. < 4.0000+0. ){\
+#         if(vest+0. >= 3.+0. && vest+0. < 4.5+0. ){\
+#         if(vest+0. >= 2.5+0. && vest+0. < 4.0+0. ){\
+#           if(sqrt((ds+0.)^2) >= 10.+0. && sqrt((dt+0.)^2) > 0.5+0. ){\
+#           if(sqrt((ds+0.)^2) >= 20.+0. && sqrt((dt+0.)^2) > 0.5+0. ){\
+#           if(sqrt((ds+0.)^2) >= 20.+0. && sqrt((dt+0.)^2) > 10.0+0. ){\
+#           if(sqrt((ds+0.)^2) >= 15.+0. && sqrt((dt+0.)^2) > 07.5+0. ){\
+#           if(sqrt((ds+0.)^2) >= 10.+0.                             ){\
+#           if(sqrt((ds+0.)^2) >=  4.+0.                             ){\
+#           if(sqrt((ds+0.)^2) >=  5.00+0.                             ){\
+#           if(sqrt((ds+0.)^2) >=  2.00+0.                             ){\
+#           if(sqrt((ds+0.)^2) >=  7.00+0.                             ){\
+          ## USE
+#         if(vest+0. >= 2.5000+0. && vest+0. < 4.0000+0. ){\
+          if(vest+0. >= 2.5000+0. && vest+0. < 3.7500+0. ){\
+            if(sqrt((ds+0.)^2) >= mnsep+0.                             ){\
+              printf("%" "10.6f %" "10.6f %" "10.6f %s %s\n", vest,ds,dt,stna,stnb );\
+            }\
+          }\
+        }\
+      }\
+    }' $of3 
+exit
+
+

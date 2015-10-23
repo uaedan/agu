@@ -1,0 +1,109 @@
+: -- NADEAU -- 991118
+### Routine to convert X, Y, and Z(D) into local lat. lon. and z(d)
+### given lat lon and rotang (West of North) of the local 
+### reference point and 
+### input X, Y, and depth of interest in decimal kilometers.
+### Conversion is into decimal degrees.  Coversion has 
+### precision of ~1m  (Taken from Alberto's fort132mac.f routine
+### and modified to do reverse calculation (i.e. xyz to llz).
+
+# 110618:  Modified to read in and make calculations based
+#          on a Ref. Lat. lon. and orientation (West of North in degs.)
+
+# 111229:  Modified to also set column numbers for the expected lat, lon and depths
+#          (C1 C2 and C3).
+
+
+#[ mll2xyz_flex.v3 C1 C2 C3 rlat rlon rNoW{degrees} {File containing: lat[dec.deg]  lon[dec.deg]  dpth[Km]}
+
+ C1="$1";  C2="$2";  C3="$3"	  	 
+
+shift
+shift
+shift
+
+#lat0="35.955";  lon0="-120.498333";  WofN="42.0"	  ## TST (approx. MMN)
+#lat0="35.955";  lon0="-120.498333";  WofN="45.0"	  ## PRK (approx. MMN)
+
+#lat0="37.8720";  lon0="-122.2506";  WofN="0000"	  ## CMSB
+#lat0="37.9627";  lon0="-122.3296";  WofN="45.0"	  ## CMSB+12
+#lat0="37.4670";  lon0="-121.7917";  WofN=""0000"	  ## SBAY (Mission)
+#lat0="37.3100";  lon0="-121.7100";  WofN="0000"	  ## CF-NVT
+#lat0="36.8443";  lon0="-121.5372";  WofN="0000"	  ## TPIN-SJB (Wiki page)
+#lat0="36.8443";  lon0="-121.5372";  WofN="$1"	  	  ## TPIN-SJB (Wiki page)
+ lat0="$1";  lon0="$2";  WofN="$3"	  	 
+
+#lat0="36.0540";  lon0="-120.6170";  WofN="42.0"	  ## MMN+15
+#lat0="36.1530";  lon0="-120.7260";  WofN="42.0"	  ## MMN+30
+#lat0="36.2550";  lon0="-120.8350";  WofN="42.0"	  ## MMN+45
+#lat0="36.3570";  lon0="-120.9440";  WofN="42.0"	  ## MMN+60
+#lat0="36.4630";  lon0="-121.0490";  WofN="42.0"	  ## MMN+75
+
+shift
+shift
+shift
+
+cat "$1" |\
+gawk '
+BEGIN{
+        
+	lat0="'"$lat0"'"; lon0="'"$lon0"'"; WofN="'"$WofN"'"
+	C1="'"$C1"'"; C2="'"$C2"'"; C3="'"$C3"'"
+	i=j=flg=0+0
+	pi=atan2(0,-1)
+	degPrad=360.00/(2*pi)
+	alpha=(90-WofN)*(1/degPrad)
+        alpha1=-alpha
+	# lat, lon to km conversion factor
+      	convlon=111.2*cos(lat0*(1/degPrad))
+        convlat=1.8493*60.
+     }
+{
+#########################
+### Body of routine below:
+i=NR
+ X[i]=$C1+0.
+ Y[i]=$C2+0.
+ dpth[i]=$C3+0.
+#X[i]=$1
+#Y[i]=$2
+#dpth[i]=$3
+#siz[i]=$4
+#V[i]=$7
+denom=cos(alpha)/sin(alpha) + sin(alpha)/cos(alpha)
+lati[i] = (X[i]/sin(alpha) + Y[i]/cos(alpha))/denom
+ lat[i] = lati[i]/convlat + lat0
+ lon[i] = ((X[i] - lati[i]*cos(alpha))/sin(alpha))/convlon + lon0
+   z[i] = dpth[i]
+#printf("%8.5f %10.5f %" "5.2f\n",lat[i],lon[i],z[i])
+ printf("%8.5f %10.5f %" "7.4f\n",lat[i],lon[i],z[i])
+#-------------
+##lat[i]=$1
+##lon[i]=$2
+##dpth[i]=$3
+##siz[i]=$4
+##V[i]=$7
+##x[i]=(lon[i]-lon0) * convlon
+##y[i]=(lat[i]-lat0) * convlat
+##z[i]=dpth[i]
+###print x[i],y[i],dpth[i]
+###     xx[i]= -x[i]
+##      xx[i]=  x[i]
+##      yy[i]=  y[i]
+##      zz[i]=  dpth[i]
+##x1[i]=x[i]*cos(alpha) + y[i]*sin(alpha)
+##y1[i]=-x[i]*sin(alpha) + y[i]*cos(alpha)
+##
+##xx1[i]=xx[i]*cos(alpha1) + yy[i]*sin(alpha1)
+##yy1[i]=-xx[i]*sin(alpha1) + yy[i]*cos(alpha1)
+##
+###print lat[i], lon[i],x1[i],y1[i],dpth[i]
+###printf("% 9.4f % 9.4f % 8.4f\n", xx1[i],yy1[i],dpth[i])
+## printf("% 9.4f % 9.4f % 8.4f %5.2f %s\n", x1[i],y1[i],dpth[i],siz[i],$NF)
+###printf("% 9.4f % 9.4f % 8.4f %5.2f %s\n", x1[i],y1[i],dpth[i],V[i],$NF)
+###printf("% 9.4f % 9.4f % 8.4f %5.2f \n", x1[i],(-1)*y1[i],dpth[i],siz[i])
+###print x[i],y[i],dpth[i]
+}
+END{
+    }'
+

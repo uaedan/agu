@@ -1,0 +1,13 @@
+:
+### Routine to sound a bell five times
+#  [  unix command; mbells  ]
+echo ""
+sleep 1
+echo ""
+sleep 1
+echo ""
+sleep 1
+echo ""
+sleep 1
+echo ""
+sleep 1

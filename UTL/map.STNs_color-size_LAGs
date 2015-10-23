@@ -1,0 +1,241 @@
+#
+set mnlt = "$1"
+set mxlt = "$2"
+set mnln = "$3"
+set mxln = "$4"
+set clt = "$5"
+set cln = "$6"
+
+set sFNo = "$7"
+set txtFNs = "$8"
+set gpLOC = "$9"
+
+set file = map.XSJ.ps
+#set cpath = /usr/contrib/data/maps
+set cpath = /data/pkgs3/contrib/data/maps
+set data = /data/05/lind/graphics/gmt/data
+set black = 0/0/0
+set white = 255/255/255
+#set grey = 130
+ set grey = 200
+ set grey2 = 170
+set red = 255/0/0
+set green = 0/255/0
+set blue = 0/0/255
+set tour = 0/255/255
+set pink = 255/125/125
+set purple = 255/0/255
+set yellow = 255/255/0
+set brown = 127/063/0
+set orange = 255/127/0
+set legend = -119.0/37.5/38./10.
+#
+
+###########################
+### MODIFY GMT DEFAULTS ###
+###########################
+# To see current gmtdefaults type in: [ gmtdefaults -L
+#gmtdefaults -Du > ./.gmtdefaults4  ## Set U.S. defaults
+#gmtset LABEL_FONT_SIZE 14 ANOT_FONT_SIZE 12 HEADER_FONT_SIZE 18
+# To see current gmtdefaults type in: [ gmtdefaults -L
+#gmtset DEGREE_FORMAT     3
+#gmtset PLOT_DEGREE_FORMAT ddd:mm:ss
+gmtset PLOT_DEGREE_FORMAT -D.xx
+gmtset ANOT_FONT_SIZE   12
+gmtset HEADER_FONT_SIZE 15
+gmtset LABEL_FONT_SIZE  15
+gmtset MEASURE_UNIT inch
+gmtset BASEMAP_TYPE plain
+
+### testing 150601 ###
+# gmtset COLOR_MODEL HSV 
+# Answer:  Does not work by itself
+### testing 150601 ###
+
+
+######################
+### COLOR CPT file ###
+######################
+#echo "B 270 1 1.00" >l.cpt     ## Between blue and Magenta (Purple)
+#echo "F 330 1 1.00" >>l.cpt    ## Between Red and Magenta
+#echo "N 0 1.0 0.0" >>l.cpt     ## Black
+####
+#mGcpt.lin >>l.cpt
+#mG.cpt.ss.pwr >>l.cpt
+
+
+#makecpt -Ccool -I   -T0.0000/4.0000/0.1 -Z > cpt.$$
+
+#makecpt -Cno_green      -T0.3000/1.0000/0.1     > cpt.$$
+#makecpt -Cno_green      -T0.4000/1.0000/0.1  -Z > cpt.$$
+  ## Lag times in seconds (@ 10 sps)
+#makecpt -Cno_green      -T-10./10./2.  -Z > cpt.$$
+#makecpt -Cno_green      -T-40./40./2.  -Z > cpt.$$
+#makecpt -Cno_green      -T-30./30./2.  -Z > cpt.$$
+#makecpt -Cno_green      -T-20./20./2.  -Z > cpt.$$
+#makecpt -Cseis          -T0.0/20.0/2.  -Z > cpt.$$
+#makecpt -Cseis          -T0.0/25.0/2.  -Z > cpt.$$
+#makecpt -Cseis          -T0.0/08.0/2.  -Z > cpt.$$
+#makecpt -Cseis          -T0.0/12.0/2.  -Z > cpt.$$
+ makecpt -Cseis          -T0.0/16.0/2.  -Z > cpt.$$
+
+  ## !!! NOTE LINUX VERSIION of GMT cannot handle float in cpt, need to use %d !!!##
+#set Bgrnd = `echo "B       000     000     000"`
+#set Bgrnd = `echo "B       125     125     125"`
+set Bgrnd = `egrep -v '^#|^B|^F|^N' cpt.$$ |head -1 |gawk '{printf("B %d %d %d\n",$2,$3,$4)}'`
+set Fgrnd = `egrep -v '^#|^B|^F|^N' cpt.$$ |tail -1 |gawk '{printf("F %d %d %d\n",$6,$7,$8)}'`
+set Ngrnd = `echo "N       180     180     180"` # grey
+#set Ngrnd = `echo "N       125     125     125"` # grey
+#set Ngrnd = `echo "N       000     000     000"` # black
+#egrep -v '^B|^F' cpt.$$ > tmp.$$
+egrep -v '^B|^F|^N' cpt.$$ > tmp.$$
+echo $Bgrnd >> tmp.$$
+echo $Fgrnd >> tmp.$$
+echo $Ngrnd >> tmp.$$
+mv tmp.$$ cpt.$$
+
+#cat cpt.$$
+
+  # SAMMIS.12stn
+# psbasemap -V -P -X2 -Y2 -Jm-120.34728/35.83225/1:1500000 -R-121.5/-119.7/35.1/36.4 \
+#           -Ba.40.10/a.20f.10:."SAMMIS PARKFIELD":WSne -L-121.3/35.5/36.0/20. -K >! $file
+  # XSJ_
+# psbasemap -V -P -X2   -Y2 -Jm-121.5200/36.8370/1:1500000 -R-122.5372/-120.5372/35.8443/37.8443 \
+# psbasemap -V -P -X1.5 -Y2 -Jm-121.5200/36.8370/1:1750000 -R-122.1000/-120.9000/36.4000/37.3000 \
+# psbasemap -V -P -X1.5 -Y2 -Jm-121.5200/36.8370/1:4000000 -R-124.7500/-118.2000/35.0000/42.1000 \
+#           -Ba1.00f.50/a1.00f.50:."HUNDREDS of STATIONS":WSne -L-123.50/36.25/36.25/100. -K >! $file
+set Llt = `echo $mnlt |gawk '{print $1+0.35}'`
+set Lln = `echo $mnln |gawk '{print $1+0.45}'`
+  psbasemap -V -P -X1.0 -Y2.4 -Jm"$cln"/"$clt"/1:1600000 -R"$mnln"/"$mxln"/"$mnlt"/"$mxlt" \
+            -Ba1.00f.50/a1.00f.50:."DELAY TIMES (sec.)":WSne -L"$Lln"/"$Llt"/"$clt"/50. -K >! $file
+
+psxy $cpath/caoutline.asc -Jm -R -Ms -: -W9/$black -O -K >> $file
+#psxy $cpath/cafaults.asc -: -Jm -R -Ms -W5/$brown -O -K >> $file
+psxy $cpath/calakes.asc -: -Jm -R -Ms -W3 -O -K >> $file
+
+
+#   ## Reference location (Center of station range)
+# echo "$cln $clt" > tmp.x.$$
+# psxy tmp.x.$$ -R -Jm -Sd0.17 -W9/$black          -O -K >> $file
+##psxy tmp.x.$$ -R -Jm -Sd0.17 -W5/$black -G$black -O -K >> $file
+# \rm -f tmp.x.$$
+
+   ## GRID-POINT INITAL LOCATION 
+ echo "$gpLOC" |gawk '{print $2,$1}' > tmp.x.$$
+echo "ZZZ "
+cat tmp.x.$$
+#psxy tmp.x.$$ -R -Jm -Sa0.60 -W5/$black           -O -K >> $file
+#psxy tmp.x.$$ -R -Jm -Sa0.80 -W3/$black  -G$yellow -O -K >> $file
+ psxy tmp.x.$$ -R -Jm -Sa0.70 -W3/$black  -G$black  -O -K >> $file
+ \rm -f tmp.x.$$
+
+
+ ### STATIONS
+  ## STARTING STNs (strt) 
+   #   NAMES
+ cat $txtFNs > tmp.$$
+ pstext tmp.$$ -R -Jm -K -O  -G120  >> $file
+ \rm -f tmp.$$
+
+   # Faults
+ psxy $cpath/cafaults.asc -: -Jm -R -Ms -W5/$brown -K -O >> $file
+
+   #   LOCATIONS
+       # non-TScope  and  non-BOREHOLE 
+set siz = `sed -n '$,$p' $sFNo |gawk '{print (15+$5)/200.}'`
+ gawk ' { print $3, $2, $4, $1 > "g.file" } ' $sFNo
+ cat g.file |\
+   gawk '{if($4 ~ /\.BK/ && $4 ~ /^T/ || $4 ~ /\.BP|\.PB/){}else{print $0}}' > tmp.$$
+ psxy  tmp.$$ -R -Jm -Sc"$siz" -W1/$black      -Ccpt.$$ -K  -O  >> $file
+ \rm -f tmp.$$
+
+       # BORHOLE stations
+set siz = `sed -n '$,$p' $sFNo |gawk '{print (15+$5)/200.}'`
+ gawk ' { print $3, $2, $4, $1 > "g.file" } ' $sFNo
+ cat g.file |\
+   gawk '{if($4 ~ /\.BP|\.PB/){print $0}}' > tmp.$$
+ psxy  tmp.$$ -R -Jm -St"$siz" -W1/$black      -Ccpt.$$ -K  -O  >> $file
+ \rm -f tmp.$$
+
+       # TScope stations
+set siz = `sed -n '$,$p' $sFNo |gawk '{print 1.5*(15+$5)/200.}'`
+ gawk ' { print $3, $2, $4, $1 > "g.file" } ' $sFNo
+ cat g.file |\
+   gawk '{if($4 ~ /\.BK/ && $4 ~ /^T/){print $0}}' > tmp.$$
+#psxy  tmp.$$ -R -Jm -Sc0.08 -W1/$black      -Ccpt.$$ -K  -O  >> $file
+ psxy  tmp.$$ -R -Jm -Ss"$siz" -W2/$black      -Ccpt.$$ -K  -O  >> $file
+ \rm -f tmp.$$
+
+
+
+##   # COLOR SCALE
+#psscale -B1.0::/0.5:Rate[cm/yr]: -D7.0i/-0.500i/2.33i/.20ih -Ccpt.$$          -O >> myp.$$
+#psscale -B5.:"Maximum Cross-Correlation": -D5.3i/-0.600i/2.33i/.20ih -Ccpt.$$          -O >> $file
+psscale -B2.:"Relative Arrival Time (sec.)": -D5.3i/-0.600i/3.00i/.20ih -Ccpt.$$          -O >> $file
+
+
+##echo $cln $clt
+##head cpt.$$
+###psscale -B1.0::/0.5:Rate[cm/yr]: -D"$cln"/"$clt"/2.33i/.20i/h -Ccpt.$$          -O >> myp.$$
+##which psscale
+##psscale -D120.234980/35.595415/2.33i/.20i/h   -Ccpt.$$  -B1.0::/0.5:Rate[cm/yr]:  -O >> myp.$$
+###psscale -B1.0::/0.5:Rate[cm/yr]: -D-120.234980/35.595415/2.33i/.20i/h -Ccpt.$$          -O >> myp.$$
+
+
+
+#  ## CANDIDATE STNs (cans) 
+#   #   LOCATIONS
+##gawk ' { print $4, $3, $2 > "g.file" } ' l.STN-NT-LLE.wCHNs.init_TPIN
+# gawk ' { print $4, $3, $1 > "g.file" } ' $cFNo
+# cat g.file > tmp.$$
+# psxy tmp.$$ -R -Jm -Sc0.08 -W1/$black -G$yellow -O -K >> $file
+# \rm -f tmp.$$
+#
+#   #   NAMES
+# cat $txtFNc > tmp.$$
+# pstext tmp.$$ -R -Jm -N -O -K >> $file
+# \rm -f tmp.$$
+#
+#  ## FINAL 12 STNs (fnl) 
+#   #   LOCATIONS
+##gawk ' { print $4, $3, $2 > "g.file" } ' l.STN-NT-LLE.wCHNs.init_TPIN
+# gawk ' { print $4, $3, $1 > "g.file" } ' $fFNo
+# cat g.file > tmp.$$
+# psxy tmp.$$ -R -Jm -Sc0.08 -W1/$black -G$red -O -K >> $file
+# \rm -f tmp.$$
+#
+#   #   NAMES
+# cat $txtFNf > tmp.$$
+# pstext tmp.$$ -R -Jm -N -O -K >> $file
+# \rm -f tmp.$$
+
+#grep BK g.file > tmp.$$
+#psxy tmp.$$ -R -Jm -Sd0.08 -W1/$black -G$red -O -K >> $file
+#\rm -f tmp.$$
+
+#grep PB g.file > tmp.$$
+#psxy tmp.$$ -R -Jm -Sc0.08 -W1/$black -G$purple -O -K >> $file
+#\rm -f tmp.$$
+
+#grep TA g.file > tmp.$$
+#psxy tmp.$$ -R -Jm -St0.08 -W1/$black -G$green -O -K >> $file
+#\rm -f tmp.$$
+
+echo "HHH1.5"
+#@sed 's/^.*\://' $sFNo |sort -u > tmp.clean.$$
+# set sFN = tmp.clean.$$
+
+echo "HHH2"
+
+
+#egrep -v '^00A ' $iFN |awk '{print $4,$5}' > temp.$$
+# egrep -v '^00A ' $iFN |awk '{print $1,$2}' > temp.$$
+  egrep -v '^00A ' $sFNo |awk '{print $4,$3}' > temp.$$
+#cat temp.$$
+#psxy temp.$$ -R -Jm -Sc0.01 -W0.5/$black        -: -O    >> $file
+
+egrep -v 'setpagedevice' $file > ttt.$$
+mv ttt.$$ myp2
+#gv myp2
+
+/bin/rm -f temp.$$ ttt.$$ $file
