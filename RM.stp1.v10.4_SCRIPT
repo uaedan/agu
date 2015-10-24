@@ -4,7 +4,10 @@
 #                 2015.074,20:47:46.5000\ # QUAKE entrained
 
 #D 151019:  RMN added Z0_STOP... for first Vest gp search w/ too few mnPAIR
-#D  I.E. at: ( - SELECT viable gp's from Vest search one )
+#D  I.E. at: ( - SELECT viable gp's from Vest search one. )
+#D 151022:  RMN added Z1_STOP... for no stations left in: dat.gp-select.OT.one
+#D 151022:  RMN added Z2_STOP... for no data left in: l.BEST.ptil.normal2
+#D           ( at least sometimes due to XC < mnXCbest (= 0.90) during ptil BEST search )  
 
 #D      ## LINUX ##
 #D      ## LINUX ##
@@ -26,10 +29,9 @@
 #LGD   set startDIR = /home/u2/ldamiao/ncaltremor/agu
 #LGD  set datDIR = /work/nct/ldamiao/agu/$QUAD/$STAGE
 #RMN  set startDIR = /data/hrsn1/hfn6/nadeau/PACKAGES/PSERM/agu
-#RMN  set datDIR = /work/nct/ldamiao/agu/$QUAD/$STAGE
+#RMN  set datDIR = /work/nct/ldamiao/agu/$QUAD/$STAGE/agu_test
 
-      set startDIR = /data/hrsn1/hfn6/nadeau/PACKAGES/PSERM/agu
-      set datDIR = /work/nct/ldamiao/agu/$QUAD/$STAGE/agu_test
+
 
       cd "$startDIR"
       set utl = "$startDIR"/UTL
@@ -108,9 +110,14 @@ sed -n '156,160p' "$startDIR"/$nvtlst > tmp.nvtlst.$$
 chmod 666 tmp.nvtlst.$$
 
 
+#foreach NVTID ( 2014.137,02:45:13.0000 )
+#foreach NVTID ( 2014.158,16:08:35.0000 )
+#foreach NVTID ( 2014.160,13:17:39.5000 ) 
+#foreach NVTID ( 2014.167,21:14:38.5000 ) 
+#foreach NVTID ( 2014.170,19:48:46.0000 2014.174,22:16:54.5000 )
+
 #LGD  foreach NVTID (` cat tmp.nvtlst.$$ `)
 #RMN  foreach NVTID ( 2014.137,02:45:13.0000 )
-foreach NVTID ( 2014.137,02:45:13.0000 )
 
       cd $datDIR
       set YD = `echo $NVTID |gawk '{printf("%04d.%03d\n",substr($0,1,4),substr($0,6,3) )}'`
@@ -1190,7 +1197,7 @@ if ( "$mkDAT" == "Y" ) then
 #D      + Select BEST based on XC, LAG and KURTOSIS Rankings
 #D        . Acutally NOT USING SigStrng.  
 #D            Its not a good discriminator with normalized data.
-#D      (OTPT:  l.BEST.ptil.raw  and  l.BEST.ptil{passtyp}  )
+#D      (OTPT:  l.BEST.ptil.raw  and  l.BEST.ptil.normal2  )
         cd $datDIR
         cd DAT_"$NVTID"
         cd DAT.TRMD
@@ -1245,6 +1252,14 @@ if ( "$mkDAT" == "Y" ) then
         echo "$wgtXC   $wgtKURT   $wgtLAG ;  $ptMN $ptMX  $mnXCbest";\
         echo "";\
         cat l.BEST.ptil"$passtyp"
+
+    # Z2_STOP TEST
+    set nn = `wc l.BEST.ptil.normal2 |gawk '{print $1}'`
+    if ( "$nn" == "0" ) then
+  echo "Z2_STOP.  No data left in: l.BEST.ptil.normal2. Processing aborted for: "$NVTID"" > Z2_STOP_"$NVTID"
+      continue
+    endif
+    set nn = ""
 
 
 #T#S==150716: BEST TESTS
@@ -2296,13 +2311,14 @@ if ( "$mkDAT" == "Y" ) then
       }\
     }' $if |\
     sort -k 5,5n |tail -"$MXgp" |tee dat.gp-select.Vest."$SWP"
-    set nn = `wc dat.gp-select.Vest."$SWP" |gawk '{print $1}'`
 
     # Z0_STOP TEST
+    set nn = `wc dat.gp-select.Vest.one |gawk '{print $1}'`
     if ( "$nn" == "0" ) then
-  echo "Z_STOP.  No data left in: dat.gp-select.Vest."$SWP". Processing aborted for: "$NVTID"" > Z0_STOP_"$NVTID"
+  echo "Z0_STOP.  No data left in: dat.gp-select.Vest."$SWP". Processing aborted for: "$NVTID"" > Z0_STOP_"$NVTID"
       continue
     endif
+    set nn = ""
 
 
 echo "B1111"
@@ -2738,7 +2754,7 @@ echo "B1111"
          SE=sprintf("%f",(iqr/1.35)/sqrt(nstn-1) );\
          seINT=sprintf("%f",int((10*SE)+0.5)+0 );\
          otINT=sprintf("%f",int($14-0.5)+0 );\
-         lin[i]=sprintf("%s %f %d %d\n", $0,SE,seINT,otINT );\
+         lin[i]=sprintf("%s %f %d %d", $0,SE,seINT,otINT );\
        }END{\
          NIT=MAXNIT+0;\
          while(NIT+0 >= 2+0){\
@@ -2793,6 +2809,14 @@ echo "B1111"
        echo "$Vstats"  |gawk '{print "mmV:             ",$0}' >> $of
        echo >> $of
        cat $of
+
+    # Z1_STOP TEST
+    set nn = ` egrep 'mmSTN\: ' dat.gp-select.OT.one |gawk '{print $5}'`
+    if ( "$nn" == "0" ) then
+  echo "Z1_STOP.  No stations left in: dat.gp-select.OT.one. Processing aborted for: "$NVTID"" > Z1_STOP_"$NVTID"
+      continue
+    endif
+    set nn = ""
 
 
 #Techo "SUMMARY:  $NVTID"
