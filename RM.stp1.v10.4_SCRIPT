@@ -30,8 +30,11 @@
 #LGD  set datDIR = /work/nct/ldamiao/agu/$QUAD/$STAGE
 #RMN  set startDIR = /data/hrsn1/hfn6/nadeau/PACKAGES/PSERM/agu
 #RMN  set datDIR = /work/nct/ldamiao/agu/$QUAD/$STAGE/agu_test
+#BL   set datDIR = /work/nct/bluna/agu/$QUAD/$STAGE/agu
 
-
+#BL   set startDIR = /home/u2/bluna/ncaltremor/agu
+      set datDIR = /work/nct/bluna/agu/$QUAD/$STAGE/agu
+      set startDIR = /home/u2/bluna/ncaltremor/agu      
 
       cd "$startDIR"
       set utl = "$startDIR"/UTL
